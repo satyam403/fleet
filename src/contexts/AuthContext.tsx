@@ -21,81 +21,126 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
 
   useEffect(() => {
-    // Check if user is logged in
     const savedUser = localStorage.getItem('fleetops-user');
+    
     if (savedUser) {
-      setUser(JSON.parse(savedUser));
+      try {
+        const parsedUser = JSON.parse(savedUser);
+        setUser(parsedUser);
+        console.log('✅ User restored from localStorage:', parsedUser);
+      } catch (error) {
+        console.error('❌ Error parsing saved user:', error);
+        localStorage.removeItem('fleetops-user');
+        localStorage.removeItem('fleetops-token');
+        localStorage.removeItem('fleetops-refresh-token');
+      }
     }
   }, []);
 
-const login = async (email: string, password: string): Promise<boolean> => {
-  try {
-    const response = await fetch("http://localhost:8000//api/v1/users/login", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ email, password }),
-    });
+  const login = async (email: string, password: string): Promise<boolean> => {
+    try {
+      const response = await fetch("http://localhost:8000/api/v1/users/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email, password }),
+      });
 
-    const data = await response.json();
+      const contentType = response.headers.get("content-type");
+      
+      if (!contentType || !contentType.includes("application/json")) {
+        console.error("❌ Server returned non-JSON response");
+        return false;
+      }
 
-    if (!response.ok) {
+      const result = await response.json();
+
+      if (!response.ok) {
+        console.error("❌ Login failed:", result);
+        return false;
+      }
+      
+      const { data } = result;
+      
+      if (!data || !data.user || !data.accessToken) {
+        console.error('❌ Invalid response structure:', result);
+        return false;
+      }
+
+      localStorage.setItem("fleetops-token", data.accessToken);
+      
+      if (data.refreshToken) {
+        localStorage.setItem("fleetops-refresh-token", data.refreshToken);
+      }
+      
+      localStorage.setItem("fleetops-user", JSON.stringify(data.user));
+      setUser(data.user);
+      
+      return true;
+    } catch (error) {
+      console.error("💥 Login error:", error);
       return false;
     }
+  };
 
-    // ✅ Save token
-    localStorage.setItem("fleetops-token", data.token);
+  const register = async (
+    name: string,
+    email: string,
+    password: string,
+    role: 'admin' | 'technician'
+  ): Promise<boolean> => {
+    try {
+      const response = await fetch("http://localhost:8000/api/v1/users/register", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ name, email, password, role }),
+      });
 
-    // ✅ Save user (without password)
-    setUser(data.user);
-    localStorage.setItem("fleetops-user", JSON.stringify(data.user));
+      const contentType = response.headers.get("content-type");
+      
+      if (!contentType || !contentType.includes("application/json")) {
+        console.error("❌ Server returned non-JSON response");
+        return false;
+      }
 
-    return true;
+      const result = await response.json();
 
-  } catch (error) {
-    console.error("Login error:", error);
-    return false;
-  }
-};
-
-
- const register = async (
-  name: string,
-  email: string,
-  password: string,
-  role: string
-): Promise<boolean> => {
-  try {
-    const response = await fetch("http://localhost:8000/api/v1/users/register", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ name, email, password, role }),
-    });
-
-    const data = await response.json();
-
-    if (!response.ok) {
+      if (!response.ok) {
+        console.error("❌ Registration failed:", result);
+        return false;
+      }
+      
+      const { data } = result;
+      
+      if (!data || !data.user || !data.accessToken) {
+        console.error('❌ Invalid response structure:', result);
+        return false;
+      }
+      
+      localStorage.setItem("fleetops-token", data.accessToken);
+      
+      if (data.refreshToken) {
+        localStorage.setItem("fleetops-refresh-token", data.refreshToken);
+      }
+      
+      localStorage.setItem("fleetops-user", JSON.stringify(data.user));
+      setUser(data.user);
+      
+      return true;
+    } catch (error) {
+      console.error("💥 Register error:", error);
       return false;
     }
-
-    localStorage.setItem("fleetops-token", data.token);
-    localStorage.setItem("fleetops-user", JSON.stringify(data.user));
-    setUser(data.user);
-
-    return true;
-  } catch (error) {
-    console.error("Register error:", error);
-    return false;
-  }
-};
-
+  };
 
   const logout = () => {
     setUser(null);
-    localStorage.removeItem('fleetops-user');
+    localStorage.removeItem("fleetops-token");
+    localStorage.removeItem("fleetops-refresh-token");
+    localStorage.removeItem("fleetops-user");
   };
 
   return (
