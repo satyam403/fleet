@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { LanguageSwitcher } from './LanguageSwitcher';
 import { useState } from 'react';
+import path from 'path';
 
 export function Layout() {
   const { t } = useTranslation();
@@ -23,6 +24,7 @@ export function Layout() {
   const navItems = [
     { path: '/', label: t('nav.dashboard'), icon: LayoutDashboard, end: true },
     { path: '/inspection', label: t('nav.inspection'), icon: ClipboardCheck },
+     {path:'/Inspectionself',label:t('nav.Inspectionself'),icon:ClipboardCheck},
     { path: '/work-orders', label: t('nav.workOrders'), icon: FileText },
     { path: '/inventory', label: t('nav.inventory'), icon: Package },
     { path: '/settings', label: t('nav.settings'), icon: Settings },

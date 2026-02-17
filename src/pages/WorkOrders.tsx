@@ -58,6 +58,25 @@ export function WorkOrders() {
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+
+  const loggedInUser = (() => {
+  try {
+    return JSON.parse(localStorage.getItem('user') || '{}');
+  } catch {
+    return {};
+  }
+})();
+
+
+useEffect(() => {
+  if (
+    loggedInUser?.role === 'technician' &&
+    loggedInUser?.name
+  ) {
+    setTechnicianName(loggedInUser.name);
+  }
+}, []);
+
   useEffect(() => {
     loadData();
   }, []);
@@ -380,14 +399,19 @@ export function WorkOrders() {
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Technician Name *
                 </label>
-                <input
-                  type="text"
-                  value={technicianName}
-                  onChange={(e) => setTechnicianName(e.target.value)}
-                  placeholder="Enter your name"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  required
-                />
+             <input
+  type="text"
+  value={technicianName}
+  onChange={(e) => setTechnicianName(e.target.value)}
+  placeholder="Enter your name"
+  disabled={loggedInUser?.role === 'technician'}
+  className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent
+    ${loggedInUser?.role === 'technician'
+      ? 'bg-gray-100 cursor-not-allowed border-gray-300'
+      : 'border-gray-300'
+    }`}
+  required
+/>
               </div>
 
               <label className="block text-sm font-medium text-gray-700 mb-2">

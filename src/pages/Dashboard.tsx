@@ -1,16 +1,19 @@
 import { useTranslation } from 'react-i18next';
 import { useEffect, useState } from 'react';
-import { getDashboardStats, getInventory, getInspections } from '../services/api';
-import type { DashboardStats, InventoryItem, Inspection } from '../types';
+import { getDashboardStats, getInventory, getAirtableInspections } from '../services/airtable';
+import type { DashboardStats, InventoryItem, Inspection } from '../services/airtable';
 import { Truck, ClipboardCheck, Package, AlertCircle } from 'lucide-react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import {
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
+  ResponsiveContainer, PieChart, Pie, Cell,
+} from 'recharts';
 
 export function Dashboard() {
   const { t } = useTranslation();
-  const [stats, setStats] = useState<DashboardStats | null>(null);
-  const [inventory, setInventory] = useState<InventoryItem[]>([]);
+  const [stats, setStats]           = useState<DashboardStats | null>(null);
+  const [inventory, setInventory]   = useState<InventoryItem[]>([]);
   const [inspections, setInspections] = useState<Inspection[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading]       = useState(true);
 
   useEffect(() => {
     loadDashboardData();
@@ -19,10 +22,12 @@ export function Dashboard() {
   async function loadDashboardData() {
     try {
       setLoading(true);
+      // FIX 1: getInspections() nahi tha — sahi function getAirtableInspections() use karo
+      // FIX 2: Promise.all mein extra empty () tha — hata diya
       const [statsData, inventoryData, inspectionsData] = await Promise.all([
         getDashboardStats(),
         getInventory(),
-        getInspections(),
+        getAirtableInspections(),
       ]);
       setStats(statsData);
       setInventory(inventoryData);
@@ -41,8 +46,8 @@ export function Dashboard() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {[1, 2, 3, 4].map(i => (
             <div key={i} className="bg-white rounded-lg p-6 shadow-sm border border-gray-200 animate-pulse">
-              <div className="h-4 bg-gray-200 rounded w-3/4 mb-4"></div>
-              <div className="h-8 bg-gray-200 rounded w-1/2"></div>
+              <div className="h-4 bg-gray-200 rounded w-3/4 mb-4" />
+              <div className="h-8 bg-gray-200 rounded w-1/2" />
             </div>
           ))}
         </div>
@@ -77,18 +82,29 @@ export function Dashboard() {
     },
   ];
 
-  // Prepare chart data
+  // FIX 3: item.name → item.partName, item.available → item.quantity,
+  //         item.used → item.qtyCheckedOut, item.pending → item.quantityUsed
+  //         (airtable.ts ke actual InventoryItem fields se match karo)
   const inventoryChartData = inventory.slice(0, 6).map(item => ({
-    name: item.name,
-    available: item.available,
-    used: item.used,
-    pending: item.pending,
+    name:      item.partName,
+    available: item.quantity,
+    used:      item.qtyCheckedOut,
+    pending:   item.quantityUsed,
   }));
 
   const inspectionStatusData = [
-    { name: 'Pass', value: inspections.filter(i => i.checklist.every(c => c.status === 'pass')).length },
-    { name: 'Fail', value: inspections.filter(i => i.checklist.some(c => c.status === 'fail')).length },
-    { name: 'Pending', value: (stats?.inspectionsPending || 0) },
+    {
+      name: 'Pass',
+      value: inspections.filter(i => i.checklist.every(c => c.status === 'pass')).length,
+    },
+    {
+      name: 'Fail',
+      value: inspections.filter(i => i.checklist.some(c => c.status === 'fail')).length,
+    },
+    {
+      name: 'Pending',
+      value: stats?.inspectionsPending || 0,
+    },
   ];
 
   const COLORS = ['#10b981', '#ef4444', '#f59e0b'];
@@ -119,6 +135,7 @@ export function Dashboard() {
 
       {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
         {/* Inventory Usage Chart */}
         <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-200">
           <h2 className="text-lg font-semibold text-gray-900 mb-4">
@@ -132,8 +149,8 @@ export function Dashboard() {
               <Tooltip />
               <Legend />
               <Bar dataKey="available" fill="#3b82f6" name="Available" />
-              <Bar dataKey="used" fill="#10b981" name="Used" />
-              <Bar dataKey="pending" fill="#f59e0b" name="Pending" />
+              <Bar dataKey="used"      fill="#10b981" name="Used" />
+              <Bar dataKey="pending"   fill="#f59e0b" name="Pending" />
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -155,7 +172,8 @@ export function Dashboard() {
                 fill="#8884d8"
                 dataKey="value"
               >
-                {inspectionStatusData.map((entry, index) => (
+                {inspectionStatusData.map((_, index) => (
+                  // FIX 4: 'entry' was declared but never used — renamed to _
                   <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                 ))}
               </Pie>
@@ -163,6 +181,7 @@ export function Dashboard() {
             </PieChart>
           </ResponsiveContainer>
         </div>
+
       </div>
 
       {/* Recent Activity */}
@@ -196,6 +215,7 @@ export function Dashboard() {
           </div>
         )}
       </div>
+
     </div>
   );
 }
